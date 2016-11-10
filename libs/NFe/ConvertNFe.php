@@ -841,7 +841,7 @@ class ConvertNFe
             $aCampos[19], //indTot
             $aCampos[20], //xPed
             $aCampos[21], //nItemPed
-            $aCampos[22] //nFCI
+            $aCampos[22]//nFCI
         );
     }
     
@@ -957,10 +957,10 @@ class ConvertNFe
         //I50xx|nDraw|nRE|chNFe|qExport|
         $this->make->tagdetExport(
             $this->nItem,
-            $aCampos[1], //nDraw
-            $aCampos[2], //nRE
-            $aCampos[3], //chNFe
-            $aCampos[4] //qExport
+            $aCampos[0], //nDraw
+            $aCampos[1], //nRE
+            $aCampos[2], //chNFe
+            $aCampos[3] //qExport
         );
     }
 

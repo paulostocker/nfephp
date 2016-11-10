@@ -801,9 +801,10 @@ class MakeNFe extends BaseMake
                 $flagNome = false;//marca se xNome é ou não obrigatório
             }
         }
-        if ($this->tpAmb == '2' && $this->mod == '55') {
+        if ($this->tpAmb == '2') {
             $xNome = 'NF-E EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL';
             //a exigência do CNPJ 99999999000191 não existe mais
+            //removido modelo 55
         }
         if ($cnpj != '') {
             $this->dom->addChild(
@@ -1235,8 +1236,6 @@ class MakeNFe extends BaseMake
         $cEAN = '',
         $xProd = '',
         $NCM = '',
-        $NVE = '',
-        $CEST = '',
         $EXTIPI = '',
         $CFOP = '',
         $uCom = '',
@@ -1274,6 +1273,12 @@ class MakeNFe extends BaseMake
             . "código EAN ou código de barras",
             true
         );
+        
+        if ($this->tpAmb == '2' && $this->mod == '65') {
+            $xProd = 'NOTA FISCAL EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL';
+            // quando for NFCe muda o nome do produto
+        }
+        
         $this->dom->addChild(
             $prod,
             "xProd",
@@ -1287,20 +1292,6 @@ class MakeNFe extends BaseMake
             $NCM,
             true,
             $identificador . "[item $nItem] Código NCM com 8 dígitos ou 2 dígitos (gênero)"
-        );
-        $this->dom->addChild(
-            $prod,
-            "NVE",
-            $NVE,
-            false,
-            $identificador . "[item $nItem] Código NVE com 2 letras maiúsculas e 4 dígitos"
-        );
-        $this->dom->addChild(
-            $prod,
-            "CEST",
-            $CEST,
-            false,
-            $identificador . "[item $nItem] Código CEST com 7 dígitos"
         );
         $this->dom->addChild(
             $prod,
@@ -1445,6 +1436,9 @@ class MakeNFe extends BaseMake
      */
     public function tagNVE($nItem = '', $texto = '')
     {
+        if ($texto == '') {
+            return '';
+        }
         $nve = $this->dom->createElement("NVE", $texto);
         $this->aNVE[$nItem][] = $nve;
         return $nve;
@@ -1463,6 +1457,9 @@ class MakeNFe extends BaseMake
      */
     public function tagCEST($nItem = '', $texto = '')
     {
+        if ($texto == '') {
+            return '';
+        }
         $cest = $this->dom->createElement("CEST", $texto);
         $this->aCest[$nItem][] = $cest;
         return $cest;
@@ -3355,8 +3352,11 @@ class MakeNFe extends BaseMake
         $siglaUF = ''
     ) {
         $transporta = $this->dom->createElement("transporta");
-        $this->dom->addChild($transporta, "CNPJ", $numCNPJ, false, "CNPJ do Transportador");
-        $this->dom->addChild($transporta, "CPF", $numCPF, false, "CPF do Transportador");
+        if (!empty($numCNPJ)) {
+            $this->dom->addChild($transporta, "CNPJ", $numCNPJ, false, "CNPJ do Transportador");
+        } else {
+            $this->dom->addChild($transporta, "CPF", $numCPF, false, "CPF do Transportador");
+        }
         $this->dom->addChild($transporta, "xNome", $xNome, false, "Razão Social ou nome do Transportador");
         $this->dom->addChild($transporta, "IE", $numIE, false, "Inscrição Estadual do Transportador");
         $this->dom->addChild($transporta, "xEnder", $xEnder, false, "Endereço Completo do Transportador");
@@ -4079,7 +4079,12 @@ class MakeNFe extends BaseMake
         if (!empty($this->aDetExport)) {
             foreach ($this->aDetExport as $nItem => $child) {
                 $prod = $this->aProd[$nItem];
-                $this->dom->appChild($prod, $child, "Inclusão do node detExport");
+                $node = $prod->getElementsByTagName("xPed")->item(0);
+                if (!empty($node)) {
+                    $prod->insertBefore($child, $node);
+                } else {
+                    $this->dom->appChild($prod, $child, "Inclusão do node detExport");
+                }
                 $this->aProd[$nItem] = $prod;
             }
         }

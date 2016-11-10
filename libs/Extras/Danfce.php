@@ -32,7 +32,6 @@ use Endroid\QrCode\QrCode;
 use NFePHP\Extras\CommonNFePHP;
 use NFePHP\Extras\DocumentoNFePHP;
 use NFePHP\Extras\DomDocumentNFePHP;
-use NFePHP\NFe\ToolsNFe;
 
 /**
  * Classe DanfceNFePHP
@@ -187,7 +186,9 @@ class Danfce extends CommonNFePHP implements DocumentoNFePHP
             $this->urlQR = $urlQR;
         }
         $this->qrCode = $this->dom->getElementsByTagName('qrCode')->item(0)->nodeValue;
-        $this->infCpl = $this->dom->getElementsByTagName("infCpl")->item(0)->nodeValue;
+        if (isset($this->dom->getElementsByTagName("infCpl")->item(0)->nodeValue)) {
+            $this->infCpl = $this->dom->getElementsByTagName("infCpl")->item(0)->nodeValue;
+        }
         if (isset($this->dom->getElementsByTagName("infAdFisco")->item(0)->nodeValue)) {
             $this->infAdFisco = $this->dom->getElementsByTagName("infAdFisco")->item(0)->nodeValue;
         }
@@ -301,7 +302,6 @@ class Danfce extends CommonNFePHP implements DocumentoNFePHP
      */
     public function montaDANFCE($ecoNFCe = true)
     {
-        $toolsNFe = new ToolsNFe('../../config/config.json');
         //DADOS DA NF
         $dhRecbto = $nProt = '';
         if (isset($this->nfeProc)) {
@@ -309,8 +309,8 @@ class Danfce extends CommonNFePHP implements DocumentoNFePHP
             $dhRecbto  = $this->pSimpleGetValue($this->nfeProc, "dhRecbto");
         }
         $digVal = $this->pSimpleGetValue($this->nfe, "DigestValue");
-        $chNFe = str_replace('NFe', '', $this->infNFe->getAttribute("Id"));
-        $chNFe = $this->pFormat($chNFe, "#### #### #### #### #### #### #### #### #### #### ####");
+        $id = str_replace('NFe', '', $this->infNFe->getAttribute("Id"));
+        $chNFe = $this->pFormat($id, "#### #### #### #### #### #### #### #### #### #### ####");
         $tpAmb = $this->pSimpleGetValue($this->ide, 'tpAmb');
         $tpEmis = $this->pSimpleGetValue($this->ide, 'tpEmis');
         $cUF = $this->pSimpleGetValue($this->ide, 'cUF');
@@ -324,12 +324,7 @@ class Danfce extends CommonNFePHP implements DocumentoNFePHP
         $vOutro = $this->pSimpleGetValue($this->ICMSTot, "vOutro");
         $vNF = $this->pSimpleGetValue($this->ICMSTot, "vNF");
         $qtdItens = $this->det->length;
-        if ($this->urlQR == '') {
-            //Busca no XML a URL da Consulta
-            $urlQR = $toolsNFe->zGetUrlQR($cUF, $tpAmb);
-        } else {
-            $urlQR = $this->urlQR;
-        }
+        $urlQR = $this->urlQR;
         //DADOS DO EMITENTE
         if (empty($this->logomarca)) {
             $image = $toolsNFe->aConfig['aDocFormat']->pathLogoNFCe;
@@ -482,7 +477,14 @@ class Danfce extends CommonNFePHP implements DocumentoNFePHP
         $this->html .= "<th class=\"tLeft\">FORMA DE PAGAMENTO</th>\n";
         $this->html .= "<th class=\"tRight\">VALOR PAGO</th>\n";
         $this->html .= "</tr>\n";
-        $this->html .= self::pagamento($this->pag);
+        $this->html .= self::pagamento($this->pag);        
+        $this->html .= "</table>\n";
+        
+        // Valor aproximado dos produtos
+        $this->html .= "<table width=\"100%\">\n";
+        $this->html .= "<tr>\n";
+        $this->html .= "<td class=\"tLeft\">Valor aproximado dos tributos: R$ ".number_format($vTotTrib, 2, ',', '.')."</td>\n";
+        $this->html .= "</tr>\n";        
         $this->html .= "</table>\n";
         
         // -- Divisão V – Área de Mensagem Fiscal
@@ -559,7 +561,7 @@ class Danfce extends CommonNFePHP implements DocumentoNFePHP
         }
         
         $this->html .= "</body>\n</html>\n";
-        return $chNFe;
+        return $id;
     }
     
     /**
@@ -706,7 +708,10 @@ class Danfce extends CommonNFePHP implements DocumentoNFePHP
             $itensHtml .=  "<tr>\n";
             $itensHtml .=  "<td class=\"tLeft\">".htmlspecialchars($nitem)."</td>\n";
             $itensHtml .=  "<td class=\"tLeft\">".htmlspecialchars($cProd)."</td>\n";
-            $itensHtml .=  "<td class=\"tLeft\">".htmlspecialchars($xProd)."</td>\n";
+            $itensHtml .=  "<td class=\"tLeft\" colspan=\"5\">".htmlspecialchars($xProd)."</td>\n";
+            $itensHtml .=  "</tr>\n";
+            $itensHtml .=  "<tr>\n";
+            $itensHtml .=  "<td colspan=\"3\"></td>\n";
             $itensHtml .=  "<td class=\"tRight\">$qCom</td>\n";
             $itensHtml .=  "<td>$uCom</td>\n";
             $itensHtml .=  "<td class=\"tRight\">".htmlspecialchars($vUnCom)."</td>\n";
@@ -753,15 +758,15 @@ class Danfce extends CommonNFePHP implements DocumentoNFePHP
             
             //CNPJ, CPF ou ID Estrageiro
             if (!empty($consCNPJ)) {
-                $consCNPJ = $this->pFormat($consCNPJ, "###.###.###-##");
-                $consHtml .= "<tr><td colspan=\"3\">CONSUMIDOR CNPJ: {consCNPJ} ".
+                $consCNPJ = $this->pFormat($consCNPJ, "##.###.###/####-##");
+                $consHtml .= "<tr><td colspan=\"3\">CONSUMIDOR CNPJ: {$consCNPJ} ".
                         htmlspecialchars($consNome)."</td></tr>\n";
             } elseif (!empty($consCPF)) {
-                $consCPF = $this->pFormat($consCPF, "##.###.###/####-##");
-                $consHtml .= "<tr><td colspan=\"3\">CONSUMIDOR CPF: {consCPF} ".
+                $consCPF = $this->pFormat($consCPF, "###.###.###-##");
+                $consHtml .= "<tr><td colspan=\"3\">CONSUMIDOR CPF: {$consCPF} ".
                         htmlspecialchars($consNome)."</td></tr>\n";
             } elseif (!empty($considEstrangeiro)) {
-                $consHtml .= "<tr><td colspan=\"3\">CONSUMIDOR Id. Estrangeiro: {considEstrangeiro} ".
+                $consHtml .= "<tr><td colspan=\"3\">CONSUMIDOR Id. Estrangeiro: {$considEstrangeiro} ".
                         htmlspecialchars($consNome)."</td></tr>\n";
             }
             if (!empty($consLgr)&&!empty($consBairro)&&!empty($consMun)&&!empty($consUF)) {
